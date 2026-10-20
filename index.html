@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>KIKK 2026 bingo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#FFFFFF; --ink:#000000; --muted:#555555; --inv:#FFFFFF;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){ --bg:#000000; --ink:#FFFFFF; --muted:#AAAAAA; --inv:#000000; color-scheme:dark; }
+}
+:root[data-theme="dark"]{ --bg:#000000; --ink:#FFFFFF; --muted:#AAAAAA; --inv:#000000; color-scheme:dark; }
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif;
+  -webkit-tap-highlight-color:transparent;
+}
+main{max-width:560px; margin:0 auto; padding:22px 12px 32px}
+header h1{
+  font-size:clamp(48px,16vw,80px); line-height:.84; font-weight:800;
+  letter-spacing:-.05em; margin:0;
+}
+header p{margin:10px 0 0; font-size:15px; color:var(--muted)}
+.status{font-size:14px; margin:18px 0 10px; min-height:1.3em}
+
+.grid{
+  display:grid; grid-template-columns:repeat(5,1fr); gap:2px;
+  background:var(--ink); border:2px solid var(--ink);
+}
+.cell{
+  position:relative; aspect-ratio:1/1.12; border:0; margin:0; padding:5px 4px;
+  background:var(--bg); color:var(--ink); border-radius:0;
+  font:inherit; font-size:clamp(10px,2.9vw,13.5px); line-height:1.12; font-weight:400;
+  display:flex; align-items:center; justify-content:center; text-align:center;
+  cursor:pointer; overflow:hidden; hyphens:auto; -webkit-hyphens:auto;
+}
+.cell:focus-visible{outline:3px solid var(--ink); outline-offset:-6px; z-index:2}
+.cell span{position:relative}
+.cell.catch{background:var(--bg); color:var(--ink)}
+.cell.catch small{font-size:.82em}
+.cell.catch b{display:block; font-size:1.32em; font-weight:800; letter-spacing:-.02em; line-height:1; margin-top:2px}
+.cell.free{background:var(--ink); color:var(--bg); font-weight:800; font-size:clamp(13px,4vw,19px); letter-spacing:-.03em; cursor:default}
+.cell.free.full{cursor:pointer}
+.cell.free small{display:block; font-size:.55em; font-weight:600; letter-spacing:0; margin-top:3px}
+.dab{
+  position:absolute; inset:0; margin:auto; width:76%; aspect-ratio:1; border-radius:50%;
+  background:#fff; mix-blend-mode:difference; pointer-events:none;
+}
+.dab.pop{animation:dab .22s cubic-bezier(.3,1.6,.5,1) both}
+@keyframes dab{from{scale:.2} to{scale:1}}
+@media (prefers-reduced-motion:reduce){.dab.pop{animation:none}}
+
+footer{display:flex; justify-content:space-between; align-items:center; margin-top:16px; gap:12px}
+footer p{margin:0; color:var(--muted); font-size:13px}
+.btn{
+  font:inherit; font-size:14px; font-weight:600; color:var(--ink); background:transparent;
+  border:2px solid var(--ink); border-radius:0; padding:8px 14px; cursor:pointer;
+}
+.btn:focus-visible{outline:3px solid var(--ink); outline-offset:3px}
+
+.modal{
+  position:fixed; inset:0; z-index:30; background:var(--ink); color:var(--bg);
+  display:none; flex-direction:column; justify-content:space-between;
+  padding:calc(28px + env(safe-area-inset-top,0px)) 20px calc(24px + env(safe-area-inset-bottom,0px));
+}
+.modal.open{display:flex}
+.modal .big{font-size:clamp(72px,26vw,140px); font-weight:800; letter-spacing:-.06em; line-height:.82; margin:0}
+.modal .what{font-size:15px; margin:14px 0 0}
+.modal .ask{font-size:clamp(28px,8.5vw,44px); font-weight:600; letter-spacing:-.03em; line-height:1.05; margin:0}
+.modal .ask b{font-weight:800; display:block; font-size:1.5em; letter-spacing:-.04em}
+.modal .done{
+  font:inherit; font-size:22px; font-weight:800; width:100%; padding:20px;
+  background:var(--bg); color:var(--ink); border:0; border-radius:0; cursor:pointer; margin-top:24px;
+}
+.modal .done:focus-visible{outline:3px solid var(--bg); outline-offset:4px}
+
+#confetti{position:fixed; inset:0; width:100%; height:100%; z-index:20; pointer-events:none; display:none}
+#stopConfetti{
+  position:fixed; z-index:50; right:12px; top:calc(12px + env(safe-area-inset-top,0px));
+  display:none; background:var(--bg);
+}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>KIKK<br>bingo</h1>
+    <p>Namur, 22–25 October 2026. Tap a square when it happens.</p>
+  </header>
+  <p class="status" id="status" aria-live="polite"></p>
+  <div class="grid" id="grid" aria-label="Bingo card"></div>
+  <footer>
+    <p id="saved">Saved on this phone</p>
+    <button class="btn" id="reset" type="button">Clear card</button>
+  </footer>
+</main>
+
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="mBig">
+  <div>
+    <p class="big" id="mBig">Bingo!</p>
+    <p class="what" id="mWhat"></p>
+  </div>
+  <div>
+    <p class="ask" id="mAsk"></p>
+    <button class="done" id="mDone" type="button">Done!</button>
+  </div>
+</div>
+
+<canvas id="confetti" aria-hidden="true"></canvas>
+<button class="btn" id="stopConfetti" type="button">Clear confetti</button>
+
+<script>
+const COLLEAGUES = ["Lauren","Sjoerd","Wouter","Thomas B","Saan","Io","Fons","Laith"];
+const CELLS = [
+  {c:"Lauren"}, "Walk the KIKK in Town trail", "Crazy good frites with Fons", "Feed pigeons on a bench with Sjoerd", "Climb the Citadelle",
+  "Spot a data viz piece", {c:"Wouter"}, "Investigate Belgian potholes with Laith", "Annoy Wouter vD", "Aesthetic videos with Io",
+  "Art trail selfie with a colleague", "Meet another studio", {free:true}, "Swap contacts with a speaker", {c:"Thomas B"},
+  "An installation that reacts to you", "Go to Lauren’s talk", {c:"Saan"}, "The best beers with a colleague", "A colleague sums up a talk in one line",
+  "A colleague’s hot take on a talk", "Swim at Piscine de Jambes", "Group photo with the team", "Makeup and go party with Klava", {c:"Sjoerd"}
+];
+const LINES = [];
+for (let i=0;i<5;i++){
+  LINES.push({name:`Row ${i+1}`, idx:[0,1,2,3,4].map(j=>i*5+j)});
+  LINES.push({name:`Column ${i+1}`, idx:[0,1,2,3,4].map(j=>j*5+i)});
+}
+LINES.push({name:"Diagonal", idx:[0,6,12,18,24]}, {name:"Other diagonal", idx:[4,8,12,16,20]});
+
+/* ---------- persistence: phone + account ---------- */
+const KEY = "kikk-bingo-2026";
+const blank = () => ({marks:{}, lines:{}, t:0});
+let state = blank();
+try { const s = JSON.parse(localStorage.getItem(KEY)||"null"); if (s && s.marks) state = s; } catch(e){}
+let remote = null, saveTimer = null;
+const savedEl = document.getElementById("saved");
+
+function persist(){
+  state.t = Date.now();
+  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){}
+  if (remote){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(()=>{
+      remote.set(JSON.parse(JSON.stringify(state)))
+        .then(()=>{ savedEl.textContent = "Saved to your account"; })
+        .catch(()=>{ savedEl.textContent = "Saved on this phone"; });
+    }, 400);
+  }
+}
+
+(async()=>{
+  try{
+    const [db, user] = await Promise.all([claude.use("db"), claude.use("user")]);
+    if (!db || !user) return;
+    const id = await user.id();
+    if (!id) return;
+    const ref = db.doc(`data/users/${id}/card`);
+    const snap = await ref.get();
+    remote = ref;
+    const r = snap.exists ? snap.data() : null;
+    if (r && r.marks && (r.t||0) > (state.t||0)){
+      state = {marks:{...r.marks}, lines:{...(r.lines||{})}, t:r.t};
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){}
+      render(false); checkLines(false);
+    } else if (state.t){
+      await ref.set(JSON.parse(JSON.stringify(state)));
+    }
+    savedEl.textContent = "Saved to your account";
+  }catch(e){ /* stays on phone storage */ }
+})();
+
+/* ---------- card ---------- */
+const grid = document.getElementById("grid");
+const statusEl = document.getElementById("status");
+let freeBtn;
+
+CELLS.forEach((cell,i)=>{
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "cell";
+  if (cell.free){
+    b.classList.add("free"); freeBtn = b;
+    b.innerHTML = "<span>KIKK</span>";
+    b.setAttribute("aria-label","Free square");
+    b.addEventListener("click", ()=>{ if (isFull()) startConfetti(); });
+  } else {
+    if (cell.c){
+      b.classList.add("catch");
+      b.innerHTML = `<span><small>Catch up with</small><b>${cell.c}</b></span>`;
+      b.setAttribute("aria-label",`Catch up with ${cell.c}`);
+    } else {
+      b.innerHTML = `<span>${cell}</span>`;
+      b.setAttribute("aria-label",cell);
+    }
+    b.addEventListener("click", ()=>toggle(i));
+  }
+  grid.appendChild(b);
+});
+
+const marked = i => CELLS[i].free || !!state.marks[i];
+const doneLines = () => LINES.map((l,k)=>l.idx.every(marked)?k:-1).filter(k=>k>=0);
+const isFull = () => CELLS.every((_,i)=>marked(i));
+
+function toggle(i){
+  if (state.marks[i]) delete state.marks[i];
+  else state.marks[i] = 1;
+  render(i); checkLines(true); persist();
+}
+
+function render(popIndex){
+  [...grid.children].forEach((b,i)=>{
+    const has = !!state.marks[i], old = b.querySelector(".dab");
+    if (has && !old){
+      const d = document.createElement("i");
+      d.className = "dab" + (popIndex===i ? " pop" : "");
+      b.append(d);
+    } else if (!has && old) old.remove();
+    if (!CELLS[i].free) b.setAttribute("aria-pressed", has ? "true":"false");
+    b.classList.remove("line");
+  });
+  const done = doneLines();
+  done.forEach(k=>LINES[k].idx.forEach(i=>grid.children[i].classList.add("line")));
+  const full = isFull();
+  freeBtn.classList.toggle("full", full);
+  freeBtn.setAttribute("aria-label", full ? "Full card. Play confetti" : "Free square");
+
+  const caught = CELLS.filter((c,i)=>c.c && state.marks[i]).length;
+  const parts = [`${caught} of 5 catch-ups`, `${Object.keys(state.marks).length+1} of 25 squares`];
+  if (done.length) parts.push(`${done.length} bingo${done.length>1?"s":""}`);
+  statusEl.textContent = parts.join(", ");
+}
+
+/* ---------- bingo high fives ---------- */
+const modal = document.getElementById("modal");
+let wasFull = isFull();
+
+function checkLines(fromTap){
+  const done = new Set(doneLines());
+  // drop high fives still waiting for a line that was undone
+  for (const k of Object.keys(state.lines)){
+    if (!state.lines[k].ack && !done.has(+k)) delete state.lines[k];
+  }
+  for (const k of done){
+    if (!state.lines[k]){
+      const p = COLLEAGUES[Math.floor(Math.random()*COLLEAGUES.length)];
+      state.lines[k] = {p, ack:false};
+    }
+  }
+  const full = isFull();
+  if (fromTap && full && !wasFull) pendingConfetti = true;
+  wasFull = full;
+  showNext();
+}
+
+let pendingConfetti = false;
+function showNext(){
+  const k = Object.keys(state.lines).find(k=>!state.lines[k].ack);
+  if (k === undefined){
+    modal.classList.remove("open");
+    return false;
+  }
+  const L = state.lines[k];
+  document.getElementById("mBig").textContent = "Bingo!";
+  document.getElementById("mWhat").textContent = LINES[k].name;
+  document.getElementById("mAsk").innerHTML = "";
+  const ask = document.getElementById("mAsk");
+  ask.append("Go high five");
+  const b = document.createElement("b"); b.textContent = "a random colleague"; ask.append(b);
+  modal.classList.add("open");
+  modal.dataset.k = k;
+  document.getElementById("mDone").focus({preventScroll:true});
+  return true;
+}
+
+document.getElementById("mDone").addEventListener("click", ()=>{
+  const k = modal.dataset.k;
+  if (state.lines[k]) state.lines[k].ack = true;
+  persist();
+  if (!showNext() && pendingConfetti){ pendingConfetti = false; startConfetti(); }
+});
+
+document.getElementById("reset").addEventListener("click", ()=>{
+  if (!confirm("Clear every square on the card?")) return;
+  state = blank(); wasFull = false; stopConfetti(); persist(); render(-1); checkLines(false);
+});
+
+/* ---------- confetti with real gravity ---------- */
+const cv = document.getElementById("confetti"), ctx = cv.getContext("2d");
+const stopBtn = document.getElementById("stopConfetti");
+let W=0, H=0, DPR=1, parts=[], running=false, last=0;
+const G = 1700;
+let grav = {x:0, y:G};
+let refGrav = {x:0, y:G};
+let sensorsAsked = false;
+
+function size(){
+  DPR = Math.min(window.devicePixelRatio||1, 2);
+  W = innerWidth; H = innerHeight;
+  cv.width = W*DPR; cv.height = H*DPR;
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+addEventListener("resize", size);
+
+function screenAngle(){
+  return (screen.orientation && screen.orientation.angle) || window.orientation || 0;
+}
+const isIOS = typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function";
+function onMotion(e){
+  const a = e.accelerationIncludingGravity;
+  if (!a || a.x == null) return;
+  // device coords -> where "down" points on screen
+  let gx = isIOS ? a.x : -a.x;
+  let gy = isIOS ? -a.y : a.y;
+  const ang = screenAngle()*Math.PI/180, c = Math.cos(ang), s = Math.sin(ang);
+  const rx = gx*c + gy*s, ry = -gx*s + gy*c;
+  grav.x += ((rx/9.81)*G - grav.x)*0.12;
+  grav.y += ((ry/9.81)*G - grav.y)*0.12;
+}
+async function askSensors(){
+  if (sensorsAsked) return; sensorsAsked = true;
+  try{
+    if (isIOS){
+      const r = await DeviceMotionEvent.requestPermission();
+      if (r !== "granted") return;
+    }
+    addEventListener("devicemotion", onMotion);
+  }catch(e){}
+}
+
+function startConfetti(){
+  askSensors();
+  size();
+  const r = freeBtn.getBoundingClientRect();
+  const ox = r.left + r.width/2, oy = r.top + r.height/2;
+  const n = Math.min(520, Math.round(W*H/700));
+  if (parts.length > 4000) parts.splice(0, parts.length - 3500);
+  for (let i=0;i<n;i++){
+    const a = Math.random()*Math.PI*2, sp = 500 + Math.random()*1500;
+    const kind = Math.random();
+    const s = 6 + Math.random()*7;
+    parts.push({
+      x:ox, y:oy, px:ox, py:oy, c:0, age:0, sup:0, vx:Math.cos(a)*sp*.5, vy:Math.sin(a)*sp - 700,
+      w: s, h: s,
+      shape: kind<.4 ? "rect" : kind<.7 ? "dot" : "ring",
+      black: Math.random()<.5, rot:Math.random()*6.28, vr:(Math.random()-.5)*16,
+      r: s*.55, delay: Math.random()*.12
+    });
+  }
+  cv.style.display = "block"; stopBtn.style.display = "block";
+  if (!running){ running = true; last = performance.now(); requestAnimationFrame(tick); }
+}
+function stopConfetti(){
+  running = false; parts = [];
+  cv.style.display = "none"; stopBtn.style.display = "none";
+}
+stopBtn.addEventListener("click", stopConfetti);
+
+const CELL = 14;
+function tick(now){
+  if (!running) return;
+  let dt = Math.min((now-last)/1000, 1/30); last = now;
+  const sub = 3, h = dt/sub;
+  if (Math.hypot(grav.x-refGrav.x, grav.y-refGrav.y) > G*0.12){
+    refGrav = {x:grav.x, y:grav.y};
+    for (const p of parts){ p.sleep = false; p.still = 0; }
+  }
+  const gl = Math.hypot(grav.x, grav.y) || 1, gx = grav.x/gl, gy = grav.y/gl;
+  for (let s=0;s<sub;s++){
+    for (const p of parts){
+      if (p.delay>0){ p.delay -= h; continue; }
+      if (p.sleep){ p.sup = 0; continue; }
+      p.px = p.x; p.py = p.y; p.c = 0; p.sp0 = p.sup; p.sup = 0; p.age += h;
+      p.vx += grav.x*h; p.vy += grav.y*h;
+      const drag = Math.exp(-1.6*h);
+      p.vx *= drag; p.vy *= drag;
+      p.s0 = Math.hypot(p.vx,p.vy);
+      p.x += p.vx*h; p.y += p.vy*h;
+      p.rot += p.vr*h;
+    }
+    // pile up: push overlapping pieces apart (spatial hash, positions only)
+    const hash = new Map();
+    for (let i=0;i<parts.length;i++){
+      const p = parts[i]; if (p.delay>0) continue;
+      const key = ((p.x/CELL)|0) + "," + ((p.y/CELL)|0);
+      let a = hash.get(key); if (!a){ a=[]; hash.set(key,a); } a.push(i);
+    }
+    for (let i=0;i<parts.length;i++){
+      const p = parts[i]; if (p.delay>0) continue;
+      const cx = (p.x/CELL)|0, cy = (p.y/CELL)|0;
+      for (let dx=-1;dx<=1;dx++) for (let dy=-1;dy<=1;dy++){
+        const a = hash.get((cx+dx)+","+(cy+dy)); if (!a) continue;
+        for (const j of a){
+          if (j<=i) continue;
+          const q = parts[j];
+          if (q.delay>0 || (!p.sleep && p.age<.6) || (!q.sleep && q.age<.6)) continue;
+          let ex = q.x-p.x, ey = q.y-p.y;
+          const min = p.r+q.r+.5, d2 = ex*ex+ey*ey;
+          if (d2 >= min*min || d2 === 0) continue;
+          if (p.sleep && q.sleep){
+            const bl = (ex*gx + ey*gy)/Math.sqrt(d2);
+            if (bl > .7) p.sup = 1; else if (bl < -.7) q.sup = 1;
+            continue;
+          }
+          const d = Math.sqrt(d2), over = Math.max(0, min-.5-d)*0.5;
+          ex/=d; ey/=d;
+          if (p.sleep && q.vx*q.vx+q.vy*q.vy > 400*400){ p.sleep = false; p.px = p.x; p.py = p.y; }
+          if (q.sleep && p.vx*p.vx+p.vy*p.vy > 400*400){ q.sleep = false; q.px = q.x; q.py = q.y; }
+          const wp = p.sleep ? 0 : q.sleep ? 1 : .5, wq = 1-wp;
+          p.x -= ex*over*wp; p.y -= ey*over*wp; q.x += ex*over*wq; q.y += ey*over*wq;
+          p.c++; q.c++;
+          // only a neighbour underneath (along gravity) holds a piece up
+          const below = ex*gx + ey*gy;
+          if ((q.sleep || q.sp0) && below > .7) p.sup = 1;
+          if ((p.sleep || p.sp0) && below < -.7) q.sup = 1;
+        }
+      }
+    }
+    // walls: only the wall gravity points at holds pieces; side walls are slippery
+    for (const p of parts){
+      if (p.sleep){
+        const m = p.r+1;
+        if ((gy > .35 && p.y >= H-m) || (gy < -.35 && p.y <= m) || (gx > .35 && p.x >= W-m) || (gx < -.35 && p.x <= m)) p.sup = 1;
+        continue;
+      }
+      if (p.delay>0 || p.s0 === undefined) continue;
+      const m = p.r;
+      if (p.x < m){ p.x = m; if (gx < -.35){ p.sup = 1; p.c++; } }
+      if (p.x > W-m){ p.x = W-m; if (gx > .35){ p.sup = 1; p.c++; } }
+      if (p.y < m){ p.y = m; if (gy < -.35){ p.sup = 1; p.c++; } }
+      if (p.y > H-m){ p.y = H-m; if (gy > .35){ p.sup = 1; p.c++; } }
+      p.vx = (p.x-p.px)/h; p.vy = (p.y-p.py)/h;
+      const sp = Math.hypot(p.vx,p.vy);
+      if (sp > p.s0){ const k = p.s0/(sp||1); p.vx *= k; p.vy *= k; }
+      if (p.c) p.vr *= .8;
+    }
+  }
+  for (const p of parts){
+    if (p.sleep && !p.sup){ p.sleep = false; p.still = 0; p.px = p.x; p.py = p.y; p.vx = p.vy = 0; continue; }
+    if (p.delay>0 || p.sleep) continue;
+    if (p.sup && p.vx*p.vx + p.vy*p.vy < 60*60){
+      p.vr *= .7;
+      if ((p.still = (p.still||0) + dt) > .25){ p.sleep = true; p.vx = p.vy = p.vr = 0; }
+    } else p.still = 0;
+  }
+  draw();
+  requestAnimationFrame(tick);
+}
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  for (const p of parts){
+    if (p.delay>0) continue;
+    ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot);
+    ctx.fillStyle = p.black ? "#000" : "#fff";
+    ctx.strokeStyle = p.black ? "#fff" : "#000";
+    ctx.lineWidth = 1.2;
+    if (p.shape==="rect"){ ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h); ctx.strokeRect(-p.w/2,-p.h/2,p.w,p.h); }
+    else if (p.shape==="dot"){ ctx.beginPath(); ctx.arc(0,0,p.w/2,0,6.283); ctx.fill(); ctx.stroke(); }
+    else { // degree ring
+      ctx.beginPath(); ctx.arc(0,0,p.w/2,0,6.283);
+      ctx.lineWidth = 3.2; ctx.strokeStyle = p.black ? "#000" : "#fff"; ctx.stroke();
+      ctx.lineWidth = 1; ctx.strokeStyle = p.black ? "#fff" : "#000";
+      ctx.beginPath(); ctx.arc(0,0,p.w/2+1.6,0,6.283); ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+render(-1);
+checkLines(false);
+</script>
+</body>
+</html>
