@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Edit KIKK bingo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#000000; --ink:#FFFFFF; --muted:#AAAAAA; --line:#333333;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif;
+  -webkit-tap-highlight-color:transparent;
+}
+main{max-width:560px; margin:0 auto; padding:22px 12px 120px}
+h1{font-size:clamp(40px,13vw,64px); line-height:.86; font-weight:800; letter-spacing:-.05em; margin:0}
+.intro{margin:10px 0 20px; font-size:15px; color:var(--muted); max-width:60ch}
+.intro a{color:var(--ink)}
+ol{list-style:none; margin:0; padding:0; border-top:2px solid var(--ink)}
+li{display:grid; grid-template-columns:auto 1fr; gap:12px; align-items:center; padding:10px 0; border-bottom:1px solid var(--line)}
+li.free{color:var(--muted)}
+.where{grid-column:1 / -1; font-size:12px; color:var(--muted); margin-bottom:-6px}
+input[type="text"]{
+  width:100%; font:inherit; font-size:17px; color:var(--ink); background:transparent;
+  border:0; border-bottom:2px solid transparent; padding:6px 0; border-radius:0;
+}
+input[type="text"]:focus{outline:none; border-bottom-color:var(--ink)}
+input[type="checkbox"]{
+  appearance:none; -webkit-appearance:none; width:28px; height:28px; margin:0;
+  border:2px solid var(--ink); border-radius:50%; cursor:pointer; display:grid; place-items:center;
+}
+input[type="checkbox"]:checked{background:var(--ink)}
+input[type="checkbox"]:focus-visible{outline:3px solid var(--ink); outline-offset:3px}
+.bar{
+  position:fixed; left:0; right:0; bottom:0; z-index:5; background:var(--bg); border-top:2px solid var(--ink);
+  padding:12px 12px calc(12px + env(safe-area-inset-bottom,0px));
+}
+.bar div{max-width:560px; margin:0 auto; display:flex; gap:12px; align-items:center; justify-content:space-between}
+.bar p{margin:0; font-size:14px; color:var(--muted)}
+.save{
+  font:inherit; font-size:18px; font-weight:800; padding:12px 26px; border:0; border-radius:0;
+  background:var(--ink); color:var(--bg); cursor:pointer;
+}
+.save:disabled{opacity:.35; cursor:default}
+.save:focus-visible{outline:3px solid var(--ink); outline-offset:3px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Edit<br>squares</h1>
+  <p class="intro">Squares appear in card order, row by row. Start a square with “Catch up with” to give it the big-name style. The circle marks a square as checked. <a href="./">Back to the card</a></p>
+  <ol id="list"></ol>
+</main>
+<div class="bar"><div>
+  <p id="msg" aria-live="polite">No changes</p>
+  <button class="save" id="save" type="button" disabled>Save</button>
+</div></div>
+
+<script>
+const KEY = "kikk-bingo-2026", CELLS_KEY = "kikk-bingo-2026-cells";
+const DEFAULT_CELLS = [
+  "Catch up with Lauren", "Walk the KIKK in Town trail", "Crazy good frites with Fons", "Feed pigeons on a bench with Sjoerd", "Climb the Citadelle",
+  "Spot a data viz piece", "Catch up with Wouter", "Investigate Belgian potholes with Laith", "Annoy Wouter vD", "Aesthetic videos with Io",
+  "Art trail selfie with a colleague", "Meet another studio", "", "Swap contacts with a speaker", "Catch up with Thomas B",
+  "An installation that reacts to you", "Go to Lauren’s talk", "Catch up with Saan", "The best beers with a colleague", "A colleague sums up a talk in one line",
+  "A colleague’s hot take on a talk", "Swim at Piscine de Jambes", "Group photo with the team", "Makeup and go party with Klava", "Catch up with Sjoerd"
+];
+const read = (k, fb) => { try { const v = JSON.parse(localStorage.getItem(k)||"null"); return v ?? fb; } catch(e){ return fb; } };
+
+let cells = read(CELLS_KEY, null);
+if (!Array.isArray(cells) || cells.length !== 25) cells = DEFAULT_CELLS.slice();
+let state = read(KEY, null);
+if (!state || !state.marks) state = {marks:{}, lines:{}, t:0};
+
+const list = document.getElementById("list"), saveBtn = document.getElementById("save"), msg = document.getElementById("msg");
+const inputs = [], checks = [];
+
+cells.forEach((text,i)=>{
+  const li = document.createElement("li");
+  const where = document.createElement("span");
+  where.className = "where";
+  where.textContent = `Row ${Math.floor(i/5)+1}, square ${i%5+1}`;
+  li.append(where);
+  if (i === 12){
+    li.className = "free";
+    const dot = document.createElement("input"); dot.type = "checkbox"; dot.checked = true; dot.disabled = true;
+    dot.setAttribute("aria-label","Free square, always checked");
+    const t = document.createElement("span"); t.textContent = "KIKK, free square";
+    li.append(dot, t);
+  } else {
+    const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = !!state.marks[i];
+    cb.setAttribute("aria-label", `Checked: row ${Math.floor(i/5)+1}, square ${i%5+1}`);
+    const inp = document.createElement("input"); inp.type = "text"; inp.value = text; inp.maxLength = 70;
+    inp.setAttribute("aria-label", `Text for row ${Math.floor(i/5)+1}, square ${i%5+1}`);
+    cb.addEventListener("change", dirty); inp.addEventListener("input", dirty);
+    inputs[i] = inp; checks[i] = cb;
+    li.append(cb, inp);
+  }
+  list.append(li);
+});
+
+function dirty(){ saveBtn.disabled = false; msg.textContent = "Unsaved changes"; }
+
+saveBtn.addEventListener("click", ()=>{
+  const fresh = read(KEY, state);           // keep anything the card saved meanwhile (high fives)
+  const marks = {};
+  const out = cells.map((t,i)=>{
+    if (i === 12) return "";
+    if (checks[i].checked) marks[i] = 1;
+    return inputs[i].value.trim();
+  });
+  const next = {marks, lines: fresh.lines || {}, t: Date.now()};
+  try {
+    localStorage.setItem(CELLS_KEY, JSON.stringify(out));
+    localStorage.setItem(KEY, JSON.stringify(next));
+    cells = out; state = next;
+    saveBtn.disabled = true; msg.textContent = "Saved. The card is updated.";
+  } catch(e){
+    msg.textContent = "Couldn’t save. Check that this browser allows website storage.";
+  }
+});
+
+addEventListener("beforeunload", e=>{ if (!saveBtn.disabled){ e.preventDefault(); e.returnValue = ""; } });
+</script>
+</body>
+</html>
